@@ -1,0 +1,244 @@
+//pin configuration for UV
+const int trigPin = 5;
+const int echoPin = 6;
+const int buzzPin = 13;
+long duration;
+float distance;
+int b=1;
+int c=1;
+unsigned int on=0;
+unsigned int on1=0;
+unsigned int on2=0;
+//UV Setup Ends
+
+//Temperature Setup Begins
+#define ptIn A5//a1
+//const int fanSpeed = 9;
+double temp;
+double tmp;
+double calc_temp;
+//Temperature Setup Ends
+
+//Fuel Level Setup Begins
+#define fllvl A1
+const int LED1 = 4;
+const int LED2 = 7;
+const int LED3 = 8;
+const int LED4 = 12;
+//Fuel Level Setup Ends
+
+//IR Sensor Setup Begins
+#define pot      A0
+#define pwm1     9
+#define pwm2    10
+const int dataIN = 3; //IR sensor INPUT
+boolean motor_dir = 0;
+int motor_speed;
+unsigned long prevmillis; // To store time
+unsigned long duratio; // To store time difference
+unsigned long refresh; // To store time for refresh of reading
+
+int rpm; // RPM value
+
+boolean currentstate; // Current state of IR input scan
+boolean prevstate;
+//const int IR
+void setup()
+{
+Serial.begin(9600);
+Serial.println("CLEARDATA");
+pinMode(trigPin, OUTPUT);
+pinMode(echoPin, INPUT);
+pinMode(buzzPin, OUTPUT);
+pinMode(ptIn, INPUT);
+// pinMode(fanSpeed,OUTPUT);
+pinMode(fllvl, INPUT);
+pinMode(LED1, OUTPUT);
+pinMode(LED2, OUTPUT);
+pinMode(LED3, OUTPUT);
+pinMode(LED4, OUTPUT);
+pinMode(pwm1,   OUTPUT);
+pinMode(pwm2,   OUTPUT);
+pinMode(dataIN,INPUT);
+prevmillis = 0;
+prevstate = LOW;
+Serial.println("LABEL,Computer Time,Fuel Level,RPM,Temperature,Proximity Level");
+//Serial.print("DATA,");
+}
+void fuel_level()
+{
+int water = analogRead(fllvl);
+int x=(water/3);
+unsigned long int milli_time;
+milli_time = millis();
+
+Serial.print("DATA,TIME");
+Serial.print(milli_time);
+Serial.print(",");
+Serial.print(x);
+Serial.print(",");
+delay(100);
+if(x>=97)
+{
+digitalWrite(LED1,HIGH);
+digitalWrite(LED2,HIGH);
+digitalWrite(LED3,HIGH);
+digitalWrite(LED4,HIGH);
+
+}
+
+if(x>92&&x<=97)
+{
+digitalWrite(LED1,LOW);
+digitalWrite(LED2,HIGH);
+digitalWrite(LED3,HIGH);
+digitalWrite(LED4,HIGH);
+
+}
+if(x>85&&x<=92)
+{
+digitalWrite(LED1,LOW);
+digitalWrite(LED2,LOW);
+digitalWrite(LED3,HIGH);
+digitalWrite(LED4,HIGH);
+
+}
+
+if(x>80&&x<=85)
+{
+digitalWrite(LED1,LOW);
+digitalWrite(LED2,LOW);
+digitalWrite(LED3,LOW);
+digitalWrite(LED4,HIGH);
+
+}
+
+if(x<=70)
+{
+digitalWrite(LED1,LOW);
+digitalWrite(LED2,LOW);
+digitalWrite(LED3,LOW);
+digitalWrite(LED4,LOW);
+
+}
+}
+
+void rpm_measurement()
+{
+currentstate = digitalRead(dataIN); // Read IR sensor state
+if( prevstate != currentstate) // If there is change in input
+{
+if( currentstate == HIGH ) // If input only changes from LOW to HIGH
+{
+duration = ( micros() - prevmillis ); // Time difference between revolution in microsecond
+rpm = (60000000/duration); // rpm = (1/ time millis)*1000*1000*60;
+prevmillis = micros(); // store time for nect revolution calculation
+}
+}
+prevstate = currentstate; // store this scan (prev scan) data for next scan
+//unsigned long int milli_time;
+//milli_time = millis();
+
+// Serial.print("DATA,");
+//Serial.print(milli_time);
+//Serial.print(",");
+Serial.print(rpm);
+Serial.print(",");
+}
+
+
+
+
+void temps()
+{
+tmp=analogRead(ptIn);
+calc_temp=(tmp*5.0)/1023.0;
+temp=(calc_temp*28)/2.2;
+Serial.print(temp);
+Serial.print(",");
+
+}
+
+void rps()
+{
+digitalWrite(trigPin, LOW);
+delayMicroseconds(2);
+digitalWrite(trigPin, HIGH);
+delayMicroseconds(10);
+digitalWrite(trigPin, LOW);
+
+duration = pulseIn(echoPin, HIGH);
+distance = 0.034*(duration/2);
+on=millis();//100
+
+if (distance <= 5)
+{
+digitalWrite(buzzPin,HIGH);
+}
+
+else if (distance <= 15 && distance > 5)
+{
+if(b==1)
+{
+on1=on;
+on2=on1+50;
+b=0;
+}
+if(on<(on1+50))
+{
+digitalWrite(buzzPin,HIGH);
+}
+else if((on<(on2+50)) && (on>=(on1+50)))
+{
+digitalWrite(buzzPin,LOW);
+}
+else
+{
+b=1;
+}
+c=1;
+}
+
+else if (distance <= 25 && distance > 15)
+{
+if(c==1)
+{
+on1=on;
+on2=on1+300;
+c=0;
+}
+if(on<(on1+300))
+{
+digitalWrite(buzzPin,HIGH);
+}
+else if((on<(on2+300)) && (on>=(on1+300)))
+{
+digitalWrite(buzzPin,LOW);
+}
+else
+{
+c=1;
+}
+b=1;
+}
+
+
+else
+{
+digitalWrite(buzzPin,LOW);
+b=1;
+c=1;
+on=on1=on2=0;
+}
+Serial.println(distance);
+
+}
+
+void loop()
+{
+fuel_level();
+rpm_measurement();
+temps();
+rps();
+//delay(300);
+}
